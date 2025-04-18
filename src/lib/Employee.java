@@ -1,11 +1,14 @@
 package lib;
 
 import java.time.LocalDate;
-import java.time.Month;
 import java.util.LinkedList;
 import java.util.List;
 
 public class Employee {
+
+	public enum Gender {
+		pria, wanita;
+	}
 
 	private String employeeId;
 	private String firstName;
@@ -16,10 +19,9 @@ public class Employee {
 	private int yearJoined;
 	private int monthJoined;
 	private int dayJoined;
-	private int monthWorkingInYear;
 
 	private boolean isForeigner;
-	private boolean gender; // true = Laki-laki, false = Perempuan
+	private Gender gender;
 
 	private int monthlySalary;
 	private int otherMonthlyIncome;
@@ -32,7 +34,7 @@ public class Employee {
 	private List<String> childIdNumbers;
 
 	public Employee(String employeeId, String firstName, String lastName, String idNumber, String address,
-			int yearJoined, int monthJoined, int dayJoined, boolean isForeigner, boolean gender) {
+			int yearJoined, int monthJoined, int dayJoined, boolean isForeigner, Gender gender) {
 		this.employeeId = employeeId;
 		this.firstName = firstName;
 		this.lastName = lastName;
@@ -40,37 +42,34 @@ public class Employee {
 		this.address = address;
 		this.yearJoined = yearJoined;
 		this.monthJoined = monthJoined;
-		this.dayJoined = dayJoined;
 		this.isForeigner = isForeigner;
 		this.gender = gender;
 
-		childNames = new LinkedList<String>();
-		childIdNumbers = new LinkedList<String>();
+		childNames = new LinkedList<>();
+		childIdNumbers = new LinkedList<>();
 	}
 
-	/**
-	 * Fungsi untuk menentukan gaji bulanan pegawai berdasarkan grade kepegawaiannya
-	 * (grade 1: 3.000.000 per bulan, grade 2: 5.000.000 per bulan, grade 3:
-	 * 7.000.000 per bulan)
-	 * Jika pegawai adalah warga negara asing gaji bulanan diperbesar sebanyak 50%
-	 */
+	private static final int GRADE_1_SALARY = 3000000;
+	private static final int GRADE_2_SALARY = 5000000;
+	private static final int GRADE_3_SALARY = 7000000;
+
+	private int calculateForeignerSalary(int baseSalary) {
+		return isForeigner ? (int) (baseSalary * 1.5) : baseSalary;
+	}
 
 	public void setMonthlySalary(int grade) {
-		if (grade == 1) {
-			monthlySalary = 3000000;
-			if (isForeigner) {
-				monthlySalary = (int) (3000000 * 1.5);
-			}
-		} else if (grade == 2) {
-			monthlySalary = 5000000;
-			if (isForeigner) {
-				monthlySalary = (int) (3000000 * 1.5);
-			}
-		} else if (grade == 3) {
-			monthlySalary = 7000000;
-			if (isForeigner) {
-				monthlySalary = (int) (3000000 * 1.5);
-			}
+		switch (grade) {
+			case 1:
+				monthlySalary = calculateForeignerSalary(GRADE_1_SALARY);
+				break;
+			case 2:
+				monthlySalary = calculateForeignerSalary(GRADE_2_SALARY);
+				break;
+			case 3:
+				monthlySalary = calculateForeignerSalary(GRADE_3_SALARY);
+				break;
+			default:
+				throw new IllegalArgumentException("Invalid grade. Grade semestinya berada antara 1 dan 3.");
 		}
 	}
 
@@ -84,7 +83,7 @@ public class Employee {
 
 	public void setSpouse(String spouseName, String spouseIdNumber) {
 		this.spouseName = spouseName;
-		this.spouseIdNumber = idNumber;
+		this.spouseIdNumber = spouseIdNumber;
 	}
 
 	public void addChild(String childName, String childIdNumber) {
@@ -92,14 +91,18 @@ public class Employee {
 		childIdNumbers.add(childIdNumber);
 	}
 
+	private int calculateMonthWorkingInYear(LocalDate date) {
+		if (date.getYear() == yearJoined) {
+			return date.getMonthValue() - monthJoined;
+		} else {
+			return 12;
+		}
+	}
+
 	public int getAnnualIncomeTax() {
-
-		// Menghitung berapa lama pegawai bekerja dalam setahun ini, jika pegawai sudah
-		// bekerja dari tahun sebelumnya maka otomatis dianggap 12 bulan.
 		LocalDate date = LocalDate.now();
-		int monthWorkingInYear = (date.getYear() == yearJoined) ? date.getMonthValue() - monthJoined : 12;
+		int monthWorkingInYear = calculateMonthWorkingInYear(date);
 
-		// Buat objek EmployeeTaxData
 		EmployeeTaxData taxData = new EmployeeTaxData(
 				monthlySalary,
 				otherMonthlyIncome,
@@ -108,7 +111,6 @@ public class Employee {
 				spouseIdNumber != null && !spouseIdNumber.isEmpty(),
 				childIdNumbers.size());
 
-		// Hitung pajak menggunakan metode calculateTax
 		return TaxFunction.calculateTax(taxData);
 	}
 }
